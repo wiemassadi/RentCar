@@ -7,6 +7,7 @@ const authAdmin = require("../middlewares/authAdmin");
 router.get("/", authAdmin, utilisateurController.findAll);
 router.post("/", authAdmin, utilisateurController.create);
 router.post("/:userId/fournisseurs/:fournisseurId", authAdmin, utilisateurController.addFournisseur);
+router.delete("/:userId/fournisseurs/:fournisseurId", authAdmin, utilisateurController.removeFournisseur);
 router.put("/:id", authAdmin, utilisateurController.update);
 router.delete("/:id", authAdmin, utilisateurController.delete);
 module.exports = router;

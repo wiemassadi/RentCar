@@ -47,8 +47,40 @@ exports.addFournisseur = async (req, res) => {
     const fournisseur = await Fournisseur.findByPk(req.params.fournisseurId);
     if (!fournisseur) return res.status(404).send("Fournisseur non trouvé");
 
-    await utilisateur.addFournisseur(fournisseur);
+    // Support different alias-generated mixins
+    if (typeof utilisateur.addFournisseursUtilisateurs === 'function') {
+      await utilisateur.addFournisseursUtilisateurs(fournisseur);
+    } else if (typeof utilisateur.addFournisseur === 'function') {
+      await utilisateur.addFournisseur(fournisseur);
+    } else if (typeof utilisateur.addFournisseurs === 'function') {
+      await utilisateur.addFournisseurs(fournisseur);
+    } else {
+      return res.status(500).send('Association utilisateur-fournisseur non disponible');
+    }
     res.status(200).send("Fournisseur lié à l'utilisateur");
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+};
+
+exports.removeFournisseur = async (req, res) => {
+  try {
+    const utilisateur = await Utilisateur.findByPk(req.params.userId);
+    if (!utilisateur) return res.status(404).send("Utilisateur non trouvé");
+
+    const fournisseur = await Fournisseur.findByPk(req.params.fournisseurId);
+    if (!fournisseur) return res.status(404).send("Fournisseur non trouvé");
+
+    if (typeof utilisateur.removeFournisseursUtilisateurs === 'function') {
+      await utilisateur.removeFournisseursUtilisateurs(fournisseur);
+    } else if (typeof utilisateur.removeFournisseur === 'function') {
+      await utilisateur.removeFournisseur(fournisseur);
+    } else if (typeof utilisateur.removeFournisseurs === 'function') {
+      await utilisateur.removeFournisseurs(fournisseur);
+    } else {
+      return res.status(500).send('Association utilisateur-fournisseur non disponible');
+    }
+    res.status(200).send({ message: 'Fournisseur détaché de l\'utilisateur' });
   } catch (err) {
     res.status(500).send(err.message);
   }

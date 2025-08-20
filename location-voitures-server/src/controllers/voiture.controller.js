@@ -167,6 +167,40 @@ exports.findByFournisseur = async (req, res) => {
   }
 };
 
+// Stats by provider (counts of vehicles by status)
+exports.statsByFournisseur = async (req, res) => {
+  try {
+    const providerId = parseInt(req.params.fournisseurId, 10);
+    if (Number.isNaN(providerId)) {
+      return res.status(400).json({ message: "Invalid fournisseurId" });
+    }
+
+    const baseWhere = {
+      [Op.or]: [
+        { fournisseurId: providerId },
+        { createurId: providerId }
+      ]
+    };
+
+    const [total, pending, validated, rejected] = await Promise.all([
+      Voiture.count({ where: baseWhere }),
+      Voiture.count({ where: { ...baseWhere, statut: "pending" } }),
+      Voiture.count({ where: { ...baseWhere, statut: "validated" } }),
+      Voiture.count({ where: { ...baseWhere, statut: "rejected" } })
+    ]);
+
+    return res.status(200).json({
+      totalVehicles: total,
+      pendingVehicles: pending,
+      validatedVehicles: validated,
+      rejectedVehicles: rejected
+    });
+  } catch (err) {
+    console.error("statsByFournisseur error:", err);
+    return res.status(500).json({ message: err?.message || "Server error" });
+  }
+};
+
 // Find all cars with their category
 exports.findAllWithCategorie = async (req, res) => {
   try {
@@ -356,11 +390,26 @@ exports.searchAvailableCars = async (req, res) => {
       });
     }
 
+    // Parse images JSON for each car to ensure frontend receives arrays
+    const dataWithParsedImages = voituresFiltrees.map(v => {
+      const json = v.toJSON();
+      if (json.images) {
+        try {
+          json.images = Array.isArray(json.images) ? json.images : JSON.parse(json.images);
+        } catch {
+          json.images = [];
+        }
+      } else {
+        json.images = [];
+      }
+      return json;
+    });
+
     res.status(200).json({
-      message: voituresFiltrees.length
+      message: dataWithParsedImages.length
         ? "Available cars retrieved successfully."
         : "No available cars match the criteria.",
-      data: voituresFiltrees
+      data: dataWithParsedImages
     });
 
   } catch (err) {
@@ -393,27 +442,6 @@ exports.attachDriver = async (req, res) => {
     });
   } catch (err) {
     console.error("Attach driver error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
-
-// Admin/Fournisseur: statistiques véhicules par fournisseur
-exports.statsByFournisseur = async (req, res) => {
-  try {
-    const { fournisseurId } = req.params;
-    const providerId = parseInt(fournisseurId, 10);
-
-    const baseWhere = {
-      [Op.or]: [{ fournisseurId: providerId }, { createurId: providerId }],
-    };
-
-    const total = await Voiture.count({ where: baseWhere });
-    const validated = await Voiture.count({ where: { ...baseWhere, statut: "validated" } });
-    const pending = await Voiture.count({ where: { ...baseWhere, statut: "pending" } });
-    const rejected = await Voiture.count({ where: { ...baseWhere, statut: "rejected" } });
-
-    res.status(200).json({ total, validated, pending, rejected });
-  } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
