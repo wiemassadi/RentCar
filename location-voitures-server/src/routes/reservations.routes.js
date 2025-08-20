@@ -13,8 +13,5 @@ router.delete("/cancel", controller.cancelReservation);
 // Provider routes
 router.get("/provider/:fournisseurId", authFournisseur, controller.getProviderReservations);
 router.get("/provider/:fournisseurId/stats", authFournisseur, controller.getProviderReservationStats);
-router.get("/provider/:fournisseurId/current", authFournisseur, controller.getProviderCurrentReservations);
-router.get("/provider/:fournisseurId/future", authFournisseur, controller.getProviderFutureReservations);
-router.get("/provider/:fournisseurId/vehicles-in-reservation", authFournisseur, controller.getProviderVehiclesInReservation);
 
 module.exports = router;

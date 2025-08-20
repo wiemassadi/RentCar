@@ -33,6 +33,7 @@ db.fournisseurs.hasMany(db.voitures, { as: "voitures" });
 db.voitures.belongsTo(db.fournisseurs, { foreignKey: "fournisseurId", as: "fournisseur" });
 
 // une catégorie contient plusieurs voitures
+
 db.voitures.belongsTo(db.categories, { foreignKey: "categorieId" });
 db.categories.hasMany(db.voitures, { foreignKey: "categorieId" });
 
@@ -44,11 +45,8 @@ db.utilisateurs.hasMany(db.reservations, { foreignKey: "clientId" });
 // Associations disponibilite
 db.voitures.hasMany(db.availabilities, { foreignKey: "voitureId", as: "availabilities" });
 
-// Associations agence et driver
-db.fournisseurs.hasMany(db.agence, { foreignKey: "providerId", as: "agences" });
-db.fournisseurs.hasMany(db.driver, { foreignKey: "providerId", as: "drivers" });
 
-// Appeler les associations définies dans chaque modèle
+
 Object.keys(db).forEach((modelName) => {
   if ("associate" in db[modelName]) {
     db[modelName].associate(db);

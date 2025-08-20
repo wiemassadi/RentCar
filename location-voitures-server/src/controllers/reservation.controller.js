@@ -250,9 +250,10 @@ exports.cancelReservation = async (req, res) => {
 exports.getProviderReservations = async (req, res) => {
   try {
     const { fournisseurId } = req.params;
-    
+    const providerId = parseInt(fournisseurId, 10);
+
     const reservations = await Reservation.findAll({
-      where: { fournisseurId },
+      where: { fournisseurId: providerId },
       include: [
         {
           model: db.voitures,
@@ -262,7 +263,7 @@ exports.getProviderReservations = async (req, res) => {
         {
           model: db.utilisateurs,
           as: "client",
-          attributes: ["id", "nom", "prenom", "email", "telephone"]
+          attributes: ["id", "nom", "prenom", "email"]
         },
         {
           model: db.agence,
@@ -275,10 +276,24 @@ exports.getProviderReservations = async (req, res) => {
           attributes: ["id", "name", "city", "address"]
         }
       ],
-      order: [["dateReservation", "DESC"]]
+      // Order by id desc (more robust if dateReservation column doesn't exist yet)
+      order: [["id", "DESC"]]
     });
 
-    res.status(200).json(reservations);
+    // Parse voiture images JSON before returning
+    const output = reservations.map(r => {
+      const data = r.toJSON();
+      if (data?.reservedCar?.images) {
+        try {
+          data.reservedCar.images = JSON.parse(data.reservedCar.images);
+        } catch (e) {
+          data.reservedCar.images = [];
+        }
+      }
+      return data;
+    });
+
+    res.status(200).json(output);
   } catch (err) {
     console.error("Error fetching provider reservations:", err);
     res.status(500).json({ message: "Error fetching reservations", error: err.message });
@@ -289,9 +304,10 @@ exports.getProviderReservations = async (req, res) => {
 exports.getProviderReservationStats = async (req, res) => {
   try {
     const { fournisseurId } = req.params;
-    
+    const providerId = parseInt(fournisseurId, 10);
+
     const stats = await Reservation.findAll({
-      where: { fournisseurId },
+      where: { fournisseurId: providerId },
       attributes: [
         "statut",
         [db.sequelize.fn("COUNT", db.sequelize.col("id")), "count"]
@@ -300,7 +316,7 @@ exports.getProviderReservationStats = async (req, res) => {
     });
 
     const totalReservations = await Reservation.count({
-      where: { fournisseurId }
+      where: { fournisseurId: providerId }
     });
 
     const pendingCount = stats.find(s => s.statut === "pending")?.dataValues?.count || 0;
@@ -316,159 +332,5 @@ exports.getProviderReservationStats = async (req, res) => {
   } catch (err) {
     console.error("Error fetching provider reservation stats:", err);
     res.status(500).json({ message: "Error fetching reservation statistics", error: err.message });
-  }
-};
-
-// Get current reservations (ongoing)
-exports.getProviderCurrentReservations = async (req, res) => {
-  try {
-    const { fournisseurId } = req.params;
-    const now = new Date();
-    
-    const currentReservations = await Reservation.findAll({
-      where: { 
-        fournisseurId,
-        statut: 'confirmed',
-        dateDebut: { [Op.lte]: now },
-        dateFin: { [Op.gte]: now }
-      },
-      include: [
-        {
-          model: db.voitures,
-          as: "reservedCar",
-          attributes: ["id", "marque", "modele", "annee", "matricule", "images"]
-        },
-        {
-          model: db.utilisateurs,
-          as: "client",
-          attributes: ["id", "nom", "prenom", "email", "telephone"]
-        },
-        {
-          model: db.agence,
-          as: "pickupAgency",
-          attributes: ["id", "name", "city", "address"]
-        },
-        {
-          model: db.agence,
-          as: "returnAgency",
-          attributes: ["id", "name", "city", "address"]
-        }
-      ],
-      order: [["dateDebut", "ASC"]]
-    });
-
-    res.status(200).json(currentReservations);
-  } catch (err) {
-    console.error("Error fetching current reservations:", err);
-    res.status(500).json({ message: "Error fetching current reservations", error: err.message });
-  }
-};
-
-// Get future reservations
-exports.getProviderFutureReservations = async (req, res) => {
-  try {
-    const { fournisseurId } = req.params;
-    const now = new Date();
-    
-    const futureReservations = await Reservation.findAll({
-      where: { 
-        fournisseurId,
-        statut: { [Op.in]: ['pending', 'confirmed'] },
-        dateDebut: { [Op.gt]: now }
-      },
-      include: [
-        {
-          model: db.voitures,
-          as: "reservedCar",
-          attributes: ["id", "marque", "modele", "annee", "matricule", "images"]
-        },
-        {
-          model: db.utilisateurs,
-          as: "client",
-          attributes: ["id", "nom", "prenom", "email", "telephone"]
-        },
-        {
-          model: db.agence,
-          as: "pickupAgency",
-          attributes: ["id", "name", "city", "address"]
-        },
-        {
-          model: db.agence,
-          as: "returnAgency",
-          attributes: ["id", "name", "city", "address"]
-        }
-      ],
-      order: [["dateDebut", "ASC"]]
-    });
-
-    res.status(200).json(futureReservations);
-  } catch (err) {
-    console.error("Error fetching future reservations:", err);
-    res.status(500).json({ message: "Error fetching future reservations", error: err.message });
-  }
-};
-
-// Get vehicles currently in reservation
-exports.getProviderVehiclesInReservation = async (req, res) => {
-  try {
-    const { fournisseurId } = req.params;
-    const now = new Date();
-    
-    const vehiclesInReservation = await Voiture.findAll({
-      where: { 
-        fournisseurId 
-      },
-      include: [
-        {
-          model: db.reservations,
-          where: {
-            statut: 'confirmed',
-            dateDebut: { [Op.lte]: now },
-            dateFin: { [Op.gte]: now }
-          },
-          include: [
-            {
-              model: db.utilisateurs,
-              as: "client",
-              attributes: ["id", "nom", "prenom", "email", "telephone"]
-            },
-            {
-              model: db.agence,
-              as: "pickupAgency",
-              attributes: ["id", "name", "city", "address"]
-            },
-            {
-              model: db.agence,
-              as: "returnAgency",
-              attributes: ["id", "name", "city", "address"]
-            }
-          ]
-        },
-        { model: db.categories, attributes: ["id", "nom"] },
-        { model: db.agence, as: "agency", attributes: ["id", "name", "city"] },
-        { model: db.driver, as: "driver", attributes: ["id", "firstName", "lastName"] }
-      ],
-      order: [["createdAt", "DESC"]]
-    });
-
-    // Parse images for each vehicle
-    const vehiclesWithParsedImages = vehiclesInReservation.map(vehicle => {
-      const vehicleData = vehicle.toJSON();
-      if (vehicleData.images) {
-        try {
-          vehicleData.images = JSON.parse(vehicleData.images);
-        } catch (e) {
-          vehicleData.images = [];
-        }
-      } else {
-        vehicleData.images = [];
-      }
-      return vehicleData;
-    });
-
-    res.status(200).json(vehiclesWithParsedImages);
-  } catch (err) {
-    console.error("Error fetching vehicles in reservation:", err);
-    res.status(500).json({ message: "Error fetching vehicles in reservation", error: err.message });
   }
 };

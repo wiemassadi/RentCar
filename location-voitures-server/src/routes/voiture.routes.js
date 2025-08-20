@@ -7,6 +7,8 @@ router.get("/voitures-avec-categorie", voitureController.findAllWithCategorie);
 router.get("/search", voitureController.searchAvailableCars);
 router.post("/attach-driver", authFournisseur, voitureController.attachDriver);
 router.post("/:fournisseurId", voitureController.create);
+// Put stats route before the dynamic id route to avoid matching conflicts
+router.get("/:fournisseurId/stats", voitureController.statsByFournisseur);
 router.get("/:fournisseurId", voitureController.findByFournisseur);
 
 router.put("/:id/validate", voitureController.validate);

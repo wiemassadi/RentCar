@@ -94,7 +94,7 @@ exports.getAllVehicles = async (req, res) => {
       include: [
         { model: db.categories, attributes: ["id", "nom"] },
         { model: db.fournisseurs, as: "fournisseur", attributes: ["id", "nom", "email"] },
-        { model: db.agence, as: "agency", attributes: ["id", "name", "city"] },
+        { model: db.agence, as: "agency", attributes: ["id", "nom", "ville"] },
         { model: db.driver, as: "driver", attributes: ["id", "firstName", "lastName"] }
       ],
       limit: parseInt(limit),

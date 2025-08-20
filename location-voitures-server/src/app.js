@@ -56,6 +56,46 @@ db.sequelize.sync().then(async () => {
       await qi.addColumn('voitures', 'fournisseurId', { type: DataTypes.INTEGER, allowNull: true });
       console.log('Added voitures.fournisseurId column');
     }
+    if (!voitureTable.images) {
+      await qi.addColumn('voitures', 'images', { type: DataTypes.TEXT, allowNull: true });
+      console.log('Added voitures.images column');
+    }
+    if (!voitureTable.driverId) {
+      await qi.addColumn('voitures', 'driverId', { type: DataTypes.INTEGER, allowNull: true });
+      console.log('Added voitures.driverId column');
+    }
+
+    // Ensure reservations table has required foreign keys/columns
+    try {
+      const reservationTable = await qi.describeTable('reservations');
+
+      if (!reservationTable.voitureId) {
+        await qi.addColumn('reservations', 'voitureId', { type: DataTypes.INTEGER, allowNull: false });
+        console.log('Added reservations.voitureId column');
+      }
+      if (!reservationTable.clientId) {
+        await qi.addColumn('reservations', 'clientId', { type: DataTypes.INTEGER, allowNull: false });
+        console.log('Added reservations.clientId column');
+      }
+      if (!reservationTable.fournisseurId) {
+        await qi.addColumn('reservations', 'fournisseurId', { type: DataTypes.INTEGER, allowNull: false });
+        console.log('Added reservations.fournisseurId column');
+      }
+      if (!reservationTable.pickupAgencyId) {
+        await qi.addColumn('reservations', 'pickupAgencyId', { type: DataTypes.INTEGER, allowNull: false });
+        console.log('Added reservations.pickupAgencyId column');
+      }
+      if (!reservationTable.returnAgencyId) {
+        await qi.addColumn('reservations', 'returnAgencyId', { type: DataTypes.INTEGER, allowNull: false });
+        console.log('Added reservations.returnAgencyId column');
+      }
+      if (!reservationTable.dateReservation) {
+        await qi.addColumn('reservations', 'dateReservation', { type: DataTypes.DATE, allowNull: true });
+        console.log('Added reservations.dateReservation column');
+      }
+    } catch (e) {
+      console.warn('Reservations schema check/add failed:', e?.message || e);
+    }
   } catch (e) {
     console.warn('Schema check/add failed:', e?.message || e);
   }

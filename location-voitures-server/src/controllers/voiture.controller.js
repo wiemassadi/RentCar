@@ -396,3 +396,24 @@ exports.attachDriver = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+// Get vehicle statistics for a provider
+exports.statsByFournisseur = async (req, res) => {
+  try {
+    const { fournisseurId } = req.params;
+    const providerId = parseInt(fournisseurId, 10);
+
+    const whereBase = {
+      [Op.or]: [{ fournisseurId: providerId }, { createurId: providerId }],
+    };
+
+    const total = await Voiture.count({ where: whereBase });
+    const validated = await Voiture.count({ where: { ...whereBase, statut: "validated" } });
+    const pending = await Voiture.count({ where: { ...whereBase, statut: "pending" } });
+    const rejected = await Voiture.count({ where: { ...whereBase, statut: "rejected" } });
+
+    return res.status(200).json({ total, validated, pending, rejected });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
