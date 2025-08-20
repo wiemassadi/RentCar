@@ -6,8 +6,19 @@ exports.create = async (req, res) => {
   try {
     const { nom, prenom , email, adresse, password } = req.body;
 
-    if (!nom || !email || !password) {
-      return res.status(400).json({ message: "Nom, email et mot de passe sont obligatoires" });
+    // Must be admin (middleware should set req.admin)
+    if (!req.admin?.id) {
+      return res.status(401).json({ message: "Admin non authentifié" });
+    }
+
+    if (!nom || !email || !password || !adresse) {
+      return res.status(400).json({ message: "Nom, email, adresse et mot de passe sont obligatoires" });
+    }
+
+    // Check unique email
+    const existing = await Utilisateur.findOne({ where: { email } });
+    if (existing) {
+      return res.status(409).json({ message: "Email déjà utilisé" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -45,8 +56,12 @@ exports.addFournisseur = async (req, res) => {
 
 exports.findAll = async (req, res) => {
   try {
+    if (!req.admin?.id) {
+      return res.status(401).json({ message: "Admin non authentifié" });
+    }
     const utilisateurs = await Utilisateur.findAll({
-      include: "fournisseurs"
+      where: { adminId: req.admin.id },
+      include: [{ model: db.fournisseurs, as: "fournisseursUtilisateurs", through: { attributes: [] } }]
     });
     res.status(200).json(utilisateurs);
   } catch (err) {

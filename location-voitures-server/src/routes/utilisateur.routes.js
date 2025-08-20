@@ -3,7 +3,8 @@ const router = express.Router();
 const utilisateurController = require("../controllers/utilisateur.controller");
 const authAdmin = require("../middlewares/authAdmin");
 
-router.get("/", utilisateurController.findAll); 
+// Protéger et retourner uniquement les utilisateurs créés par l'admin connecté
+router.get("/", authAdmin, utilisateurController.findAll);
 router.post("/", authAdmin, utilisateurController.create);
 router.post("/:userId/fournisseurs/:fournisseurId", authAdmin, utilisateurController.addFournisseur);
 router.put("/:id", authAdmin, utilisateurController.update);

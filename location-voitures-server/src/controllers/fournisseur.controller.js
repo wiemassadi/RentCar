@@ -20,6 +20,7 @@ exports.create = async (req, res) => {
       tauxCommission,
       solde,
       password: hashedPassword,
+      adminId: req.admin?.id || null,
     });
 
     res.status(201).json({ message: "Fournisseur créé avec succès", fournisseur });
@@ -31,7 +32,9 @@ exports.create = async (req, res) => {
 
 exports.findAll = async (req, res) => {
   try {
-    const fournisseurs = await Fournisseur.findAll();
+    // Si admin connecté, filtrer par adminId
+    const where = req.admin?.id ? { adminId: req.admin.id } : {};
+    const fournisseurs = await Fournisseur.findAll({ where });
     res.json(fournisseurs);
   } catch (error) {
     res.status(500).send(error.message);
@@ -44,7 +47,9 @@ exports.update = async (req, res) => {
     if (!fournisseur) {
       return res.status(404).send("Fournisseur non trouvé");
     }
-    await fournisseur.update(req.body);
+    // Empêcher de changer adminId via update côté API
+    const { adminId, ...payload } = req.body || {}
+    await fournisseur.update(payload);
     res.json(fournisseur);
   } catch (error) {
     res.status(500).send(error.message);

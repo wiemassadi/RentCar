@@ -397,23 +397,23 @@ exports.attachDriver = async (req, res) => {
   }
 };
 
-// Get vehicle statistics for a provider
+// Admin/Fournisseur: statistiques véhicules par fournisseur
 exports.statsByFournisseur = async (req, res) => {
   try {
     const { fournisseurId } = req.params;
     const providerId = parseInt(fournisseurId, 10);
 
-    const whereBase = {
+    const baseWhere = {
       [Op.or]: [{ fournisseurId: providerId }, { createurId: providerId }],
     };
 
-    const total = await Voiture.count({ where: whereBase });
-    const validated = await Voiture.count({ where: { ...whereBase, statut: "validated" } });
-    const pending = await Voiture.count({ where: { ...whereBase, statut: "pending" } });
-    const rejected = await Voiture.count({ where: { ...whereBase, statut: "rejected" } });
+    const total = await Voiture.count({ where: baseWhere });
+    const validated = await Voiture.count({ where: { ...baseWhere, statut: "validated" } });
+    const pending = await Voiture.count({ where: { ...baseWhere, statut: "pending" } });
+    const rejected = await Voiture.count({ where: { ...baseWhere, statut: "rejected" } });
 
-    return res.status(200).json({ total, validated, pending, rejected });
+    res.status(200).json({ total, validated, pending, rejected });
   } catch (err) {
-    return res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
