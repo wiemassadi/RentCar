@@ -20,9 +20,11 @@ exports.generateInvoice = async (req, res) => {
 
     const reservation = await Reservation.findByPk(reservationId, {
       include: [
-        { model: Voiture, as: "voiture" },
-        { model: Utilisateur, as: "client" },
-        { model: Fournisseur, as: "fournisseur" }
+        { model: db.voitures, as: "reservedCar" },
+        { model: db.utilisateurs, as: "client" },
+        { model: db.fournisseurs, as: "fournisseur" },
+        { model: db.agence, as: "pickupAgency" },
+        { model: db.agence, as: "returnAgency" }
       ]
     });
 
@@ -69,7 +71,7 @@ exports.generateInvoice = async (req, res) => {
       details: {
         client: reservation.client,
         fournisseur: reservation.fournisseur,
-        voiture: reservation.voiture,
+        voiture: reservation.reservedCar,
         reservation: {
           dateDebut: formatDate(reservation.dateDebut),
           dateFin: formatDate(reservation.dateFin),
@@ -92,3 +94,27 @@ exports.getAllFactures = async (req, res) => {
     res.status(500).send(err.message);
   }
 };
+
+// List invoices for the authenticated user (client)
+exports.getMyFactures = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const factures = await Facture.findAll({
+      include: [
+        {
+          model: Reservation,
+          as: "reservation",
+          where: { clientId: userId },
+          include: [
+            { model: db.voitures, as: "reservedCar", attributes: ["id", "marque", "modele"] },
+            { model: db.fournisseurs, as: "fournisseur", attributes: ["id", "nom"] }
+          ]
+        }
+      ],
+      order: [["id", "DESC"]]
+    });
+    res.json(factures);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+}

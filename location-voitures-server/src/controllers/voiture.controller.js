@@ -321,6 +321,10 @@ exports.searchAvailableCars = async (req, res) => {
     const start = new Date(dateDebut);
     const end = new Date(dateFin);
 
+    // Normaliser sur des journées entières pour éviter les soucis de fuseau horaire
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return res.status(400).json({ message: "Invalid date format." });
     }
@@ -340,20 +344,13 @@ exports.searchAvailableCars = async (req, res) => {
     if (fournisseurId) whereConditions.fournisseurId = fournisseurId;
     if (avecAssurance !== undefined) whereConditions.avecAssurance = avecAssurance === "true";
 
-    // Trouver les voitures réservées pendant la période donnée
+    // Trouver les voitures réservées pendant la période donnée (chevauchement)
+    // Règle d'overlap: reservation.dateDebut <= end AND reservation.dateFin >= start
     const reservations = await Reservation.findAll({
       where: {
         statut: { [Op.in]: ["pending", "confirmed"] },
-        [Op.or]: [
-          { dateDebut: { [Op.between]: [start, end] } },
-          { dateFin: { [Op.between]: [start, end] } },
-          {
-            [Op.and]: [
-              { dateDebut: { [Op.lte]: start } },
-              { dateFin: { [Op.gte]: end } }
-            ]
-          }
-        ]
+        dateDebut: { [Op.lte]: end },
+        dateFin: { [Op.gte]: start }
       },
       attributes: ["voitureId"]
     });
@@ -368,7 +365,8 @@ exports.searchAvailableCars = async (req, res) => {
       where: whereConditions,
       include: [
         { model: db.categories, as: "categorie", attributes: ["nom"] },
-        { model: db.fournisseurs, as: "fournisseur" },
+        { model: db.fournisseurs, as: "fournisseur", attributes: ["id", "nom", "email"] },
+        { model: db.agence, as: "agency", attributes: ["id", "name", "city"] },
         { model: db.driver, as: "driver", attributes: ["id", "firstName", "lastName", "age"] }
       ],
       order: [["prixUnitaireHT", "ASC"]]

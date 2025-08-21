@@ -43,6 +43,20 @@ exports.getAllAgencies = async (req, res) => {
   }
 };
 
+// Public: list agencies by providerId (no auth required)
+exports.getAgenciesByProviderPublic = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    if (!providerId) return res.status(400).json({ message: 'providerId is required' });
+
+    const agencies = await Agency.findAll({ where: { providerId } });
+    res.json(agencies);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error fetching agencies' });
+  }
+};
+
 exports.getAgencyById = async (req, res) => {
   try {
     const providerId = req.user.id;

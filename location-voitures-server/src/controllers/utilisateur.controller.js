@@ -127,3 +127,52 @@ exports.delete = async (req, res) => {
   }
 };
 
+// ----- SELF PROFILE (utilisateur authentifié) -----
+exports.getMyProfile = async (req, res) => {
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: "Utilisateur non authentifié" });
+    const utilisateur = await Utilisateur.findByPk(req.user.id);
+    if (!utilisateur) return res.status(404).json({ message: "Utilisateur non trouvé" });
+    res.json({
+      id: utilisateur.id,
+      nom: utilisateur.nom,
+      prenom: utilisateur.prenom,
+      email: utilisateur.email,
+      adresse: utilisateur.adresse,
+      role: "utilisateur",
+    });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+};
+
+exports.updateMyProfile = async (req, res) => {
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: "Utilisateur non authentifié" });
+    const { nom, prenom, email, adresse, password } = req.body || {};
+    const utilisateur = await Utilisateur.findByPk(req.user.id);
+    if (!utilisateur) return res.status(404).json({ message: "Utilisateur non trouvé" });
+
+    const updatePayload = {};
+    if (typeof nom === 'string') updatePayload.nom = nom;
+    if (typeof prenom === 'string') updatePayload.prenom = prenom;
+    if (typeof email === 'string') updatePayload.email = email;
+    if (typeof adresse === 'string') updatePayload.adresse = adresse;
+    if (typeof password === 'string' && password.trim().length > 0) {
+      updatePayload.password = await bcrypt.hash(password.trim(), 10);
+    }
+
+    await utilisateur.update(updatePayload);
+    res.json({
+      id: utilisateur.id,
+      nom: utilisateur.nom,
+      prenom: utilisateur.prenom,
+      email: utilisateur.email,
+      adresse: utilisateur.adresse,
+      role: "utilisateur",
+    });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+};
+
