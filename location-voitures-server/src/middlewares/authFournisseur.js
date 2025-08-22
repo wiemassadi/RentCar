@@ -16,7 +16,7 @@ const authFournisseur = async (req, res, next) => {
     const fournisseur = await Fournisseur.findByPk(decoded.id);
     if (!fournisseur) return res.status(403).json({ message: "Accès refusé" });
 
-    req.user = fournisseur; // on garde les infos dans req.user
+    req.fournisseur = fournisseur; // stocker clairement le fournisseur
     next();
   } catch (err) {
     res.status(401).json({ message: "Token invalide" });

@@ -7,6 +7,7 @@ const Availability = db.availabilities;
 const Utilisateur = db.utilisateurs;
 
 const { calculerMontants } = require("../utils/finance");
+const NotificationService = require("../services/notification.service");
 
 // Parse incoming dates robustly to avoid timezone shifts.
 // If format is YYYY-MM-DD, construct a local date (year, monthIndex, day)
@@ -121,6 +122,19 @@ exports.createReservation = async (req, res) => {
       montantTotalTTC: montant.montantTotalTTC,
       reservationId: reservation.id
     });
+
+    // Notifier le fournisseur et le client
+    try {
+      await NotificationService.notifyNewReservation(
+        reservation.id, 
+        fournisseurId, 
+        clientId, 
+        voitureId
+      );
+    } catch (notificationError) {
+      console.error('Erreur notification nouvelle réservation:', notificationError);
+      // Ne pas faire échouer la création de la réservation si la notification échoue
+    }
 
     res.status(201).json(reservation);
   } catch (err) {
@@ -246,6 +260,18 @@ exports.modifyReservation = async (req, res) => {
       console.error("Invoice sync failed:", e?.message || e);
     }
 
+    // Notifier le fournisseur et le client
+    try {
+      await NotificationService.notifyReservationModified(
+        reservation.id, 
+        reservation.fournisseurId, 
+        reservation.clientId, 
+        reservation.voitureId
+      );
+    } catch (notificationError) {
+      console.error('Erreur notification modification réservation:', notificationError);
+    }
+
     res.status(200).json({ message: "Reservation successfully updated" });
 
   } catch (err) {
@@ -278,6 +304,19 @@ exports.cancelReservation = async (req, res) => {
         manuallyEditable: false
       }
     });
+
+    // Notifier le fournisseur et le client
+    try {
+      await NotificationService.notifyReservationCancelled(
+        reservation.id, 
+        reservation.fournisseurId, 
+        reservation.clientId, 
+        reservation.voitureId
+      );
+    } catch (notificationError) {
+      console.error('Erreur notification annulation réservation:', notificationError);
+    }
+
     res.status(200).json({ message: "Reservation successfully cancelled" });
   } catch (err) {
     res.status(500).send(err.message);

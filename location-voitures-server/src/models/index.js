@@ -23,6 +23,7 @@ db.factures = require("./facture.model")(sequelize, Sequelize.DataTypes);
 db.agence = require("./agence.model")(sequelize, DataTypes);
 db.driver = require("./driver.model")(sequelize, DataTypes);
 db.accessory = require("./accessory.model")(sequelize, Sequelize);
+db.notifications = require("./notification.model")(sequelize, DataTypes);
 
 //relation entre fournisseur et admin
 db.admins.hasMany(db.fournisseurs, { foreignKey: "adminId" });

@@ -10,6 +10,10 @@ router.post("/vehicles", authAdmin, adminController.createVehicle);
 router.put("/vehicles/:id", authAdmin, adminController.updateVehicle);
 router.delete("/vehicles/:id", authAdmin, adminController.deleteVehicle);
 
+// Validation des véhicules
+router.put("/vehicles/:id/validate", authAdmin, adminController.validateVehicle);
+router.put("/vehicles/:id/reject", authAdmin, adminController.rejectVehicle);
+
 // Admin self profile
 router.get("/me/profile", authAdmin, adminController.getMyProfile);
 router.put("/me/profile", authAdmin, adminController.updateMyProfile);

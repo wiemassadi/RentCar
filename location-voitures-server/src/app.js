@@ -16,6 +16,8 @@ const driverRoutes = require("./routes/driver.routes");
 const accessoryRoutes = require("./routes/accessory.routes");
 const uploadRoutes = require("./routes/upload.routes");
 const adminRoutes = require("./routes/admin.routes");
+const notificationRoutes = require("./routes/notification.routes");
+const ReminderService = require("./services/reminder.service");
 
 
 const cors = require("cors");
@@ -38,6 +40,7 @@ app.use("/api/drivers", driverRoutes);
 app.use("/api/accessories", accessoryRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Servir les fichiers statiques (images)
 app.use("/uploads", express.static("uploads"));
@@ -155,11 +158,28 @@ db.sequelize.sync().then(async () => {
       }
     } catch (e) { console.warn('admins.profilePicture check failed:', e?.message || e) }
 
+    // Ensure notifications table exists and has required columns
+    try {
+      const notificationsTable = await qi.describeTable('notifications');
+      console.log('Notifications table exists');
+    } catch (e) {
+      console.log('Creating notifications table...');
+      // The table will be created by Sequelize sync
+    }
+
   } catch (e) {
     console.warn('Schema check/add failed:', e?.message || e);
   }
 
   app.listen(3000, () => {
     console.log("Server started at http://localhost:3000");
+    
+    // Démarrer les tâches de maintenance des notifications
+    try {
+      ReminderService.scheduleMaintenanceTasks();
+      console.log("Tâches de maintenance des notifications planifiées");
+    } catch (error) {
+      console.error("Erreur démarrage tâches de maintenance:", error);
+    }
   });
 });

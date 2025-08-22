@@ -6,6 +6,7 @@ const Reservation = db.reservations;
 const Availability = db.availabilities;
 const Agence = db.agence;
 const Driver = db.driver;
+const NotificationService = require("../services/notification.service");
 // Create a new car (by provider)
 exports.create = async (req, res) => {
   try {
@@ -94,6 +95,14 @@ exports.create = async (req, res) => {
       created.images = [];
     }
 
+    // Notifier l'admin qu'un nouveau véhicule a été ajouté
+    try {
+      await NotificationService.notifyNewVehicleAdded(voiture.id, fournisseur.id, fournisseur.adminId);
+    } catch (notificationError) {
+      console.error('Erreur notification nouveau véhicule:', notificationError);
+      // Ne pas faire échouer la création de la voiture si la notification échoue
+    }
+
     res.status(201).json(created);
   } catch (err) {
     console.error('Create vehicle error:', err);
@@ -113,6 +122,19 @@ exports.validate = async (req, res) => {
       modificateurId: req.body.adminId
     });
 
+    // Notifier le fournisseur (au cas où cette route est utilisée pour la validation)
+    try {
+      const adminId = req.admin?.id || req.body.adminId || null;
+      await NotificationService.notifyVehicleValidation(
+        voiture.id,
+        voiture.fournisseurId,
+        true,
+        adminId
+      );
+    } catch (e) {
+      console.error('Notification validation via voiture.controller échouée:', e?.message || e);
+    }
+
     res.status(200).json({ message: "Car validated", voiture });
   } catch (err) {
     res.status(500).send(err.message);
@@ -129,6 +151,19 @@ exports.reject = async (req, res) => {
       statut: "rejected",
       modificateurId: req.body.adminId
     });
+
+    // Notifier le fournisseur (au cas où cette route est utilisée pour le rejet)
+    try {
+      const adminId = req.admin?.id || req.body.adminId || null;
+      await NotificationService.notifyVehicleValidation(
+        voiture.id,
+        voiture.fournisseurId,
+        false,
+        adminId
+      );
+    } catch (e) {
+      console.error('Notification rejet via voiture.controller échouée:', e?.message || e);
+    }
 
     res.status(200).json({ message: "Car rejected", voiture });
   } catch (err) {

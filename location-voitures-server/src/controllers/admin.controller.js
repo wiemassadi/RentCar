@@ -5,6 +5,7 @@ const Categorie = db.categories;
 const Agence = db.agence;
 const Admin = db.admins;
 const bcrypt = require('bcrypt');
+const NotificationService = require("../services/notification.service");
 
 // Créer un véhicule en tant qu'admin
 exports.createVehicle = async (req, res) => {
@@ -287,3 +288,102 @@ exports.updateMyProfile = async (req, res) => {
     res.json(admin)
   } catch (e) { res.status(500).send(e.message) }
 }
+
+// Valider un véhicule
+exports.validateVehicle = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.admin.id;
+
+    const voiture = await Voiture.findByPk(id, {
+      include: [
+        { model: db.fournisseurs, as: "fournisseur", attributes: ["id", "nom", "email"] }
+      ]
+    });
+
+    if (!voiture) {
+      return res.status(404).json({ message: "Véhicule non trouvé" });
+    }
+
+    if (voiture.statut === 'validated') {
+      return res.status(400).json({ message: "Ce véhicule est déjà validé" });
+    }
+
+    // Mettre à jour le statut
+    await voiture.update({
+      statut: 'validated',
+      modificateurId: adminId
+    });
+
+    // Notifier le fournisseur
+    try {
+      await NotificationService.notifyVehicleValidation(
+        voiture.id, 
+        voiture.fournisseurId, 
+        true, 
+        adminId
+      );
+    } catch (notificationError) {
+      console.error('Erreur notification validation véhicule:', notificationError);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Véhicule validé avec succès",
+      voiture
+    });
+  } catch (err) {
+    console.error("Erreur validation véhicule:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Rejeter un véhicule
+exports.rejectVehicle = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.admin.id;
+    const { reason } = req.body;
+
+    const voiture = await Voiture.findByPk(id, {
+      include: [
+        { model: db.fournisseurs, as: "fournisseur", attributes: ["id", "nom", "email"] }
+      ]
+    });
+
+    if (!voiture) {
+      return res.status(404).json({ message: "Véhicule non trouvé" });
+    }
+
+    if (voiture.statut === 'rejected') {
+      return res.status(400).json({ message: "Ce véhicule est déjà rejeté" });
+    }
+
+    // Mettre à jour le statut
+    await voiture.update({
+      statut: 'rejected',
+      modificateurId: adminId
+    });
+
+    // Notifier le fournisseur
+    try {
+      await NotificationService.notifyVehicleValidation(
+        voiture.id, 
+        voiture.fournisseurId, 
+        false, 
+        adminId
+      );
+    } catch (notificationError) {
+      console.error('Erreur notification rejet véhicule:', notificationError);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Véhicule rejeté",
+      voiture
+    });
+  } catch (err) {
+    console.error("Erreur rejet véhicule:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
