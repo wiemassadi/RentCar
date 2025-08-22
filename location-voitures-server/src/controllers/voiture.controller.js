@@ -136,7 +136,7 @@ exports.reject = async (req, res) => {
   }
 };
 
-// Find all cars by a provider
+// Find all cars by a provider (with associations for UI display)
 exports.findByFournisseur = async (req, res) => {
   try {
     const providerId = parseInt(req.params.fournisseurId, 10);
@@ -146,16 +146,18 @@ exports.findByFournisseur = async (req, res) => {
           { fournisseurId: providerId },
           { createurId: providerId }
         ]
-      }
+      },
+      include: [
+        { model: db.categories, as: "categorie", attributes: ["id", "nom"] },
+        { model: db.agence, as: "agency", attributes: ["id", "name", "city"] },
+        { model: db.driver, as: "driver", attributes: ["id", "firstName", "lastName", "age"] }
+      ],
+      order: [["id", "DESC"]]
     });
     const vehiclesWithParsedImages = voitures.map(v => {
       const data = v.toJSON();
-      if (data.images) {
-        try {
-          data.images = JSON.parse(data.images);
-        } catch (e) {
-          data.images = [];
-        }
+      if (data?.images) {
+        try { data.images = Array.isArray(data.images) ? data.images : JSON.parse(data.images); } catch { data.images = []; }
       } else {
         data.images = [];
       }
@@ -221,11 +223,21 @@ exports.findAllWithCategorie = async (req, res) => {
   }
 };
 
-// Update a car
+// Update a car (provider can edit own car; if current statut is 'rejected', set back to 'pending')
 exports.update = async (req, res) => {
   try {
     const voiture = await Voiture.findByPk(req.params.id);
     if (!voiture) return res.status(404).send("Car not found");
+
+    // Authorization: a provider can only update their own car
+    // Accept if requester is the owner through fournisseurId or createurId
+    if (req.user && req.user.id) {
+      const requesterId = Number(req.user.id);
+      const isOwner = Number(voiture.fournisseurId) === requesterId || Number(voiture.createurId) === requesterId;
+      if (!isOwner) {
+        return res.status(403).json({ message: "You are not authorized to update this car" });
+      }
+    }
 
     const {
       marque,
@@ -235,6 +247,10 @@ exports.update = async (req, res) => {
       avecAssurance,
       statut,
        places,
+      carburant,
+      transmission,
+      matricule,
+      remise,
       categorieId,
       modificateurId,
       agencyId,
@@ -250,11 +266,39 @@ exports.update = async (req, res) => {
     if (avecAssurance !== undefined) updateData.avecAssurance = avecAssurance;
     if (statut !== undefined) updateData.statut = statut;
     if (places !== undefined) updateData.places = places;
+    if (carburant !== undefined) updateData.carburant = carburant;
+    if (transmission !== undefined) updateData.transmission = transmission;
+    if (matricule !== undefined) updateData.matricule = matricule;
+    if (remise !== undefined) updateData.remise = remise;
     if (categorieId !== undefined) updateData.categorieId = categorieId;
     if (modificateurId !== undefined) updateData.modificateurId = modificateurId;
     if (agencyId !== undefined) updateData.agencyId = agencyId;
-    if (images !== undefined) updateData.images = images ? JSON.stringify(images) : JSON.stringify([]);
-    if (driverId !== undefined) updateData.driverId = driverId || null;
+    if (images !== undefined) {
+      const normalized = Array.isArray(images) ? images.map(String) : [];
+      updateData.images = JSON.stringify(normalized);
+    }
+
+    if (driverId !== undefined) {
+      if (driverId === null || driverId === 0 || driverId === 'none') {
+        updateData.driverId = null;
+      } else {
+        const driver = await Driver.findByPk(driverId);
+        if (!driver) {
+          return res.status(404).json({ message: 'Driver not found' });
+        }
+        // Ensure driver belongs to same provider as the car
+        const carOwnerId = Number(voiture.fournisseurId || voiture.createurId);
+        if (Number(driver.providerId) !== carOwnerId) {
+          return res.status(403).json({ message: 'Driver does not belong to this provider' });
+        }
+        updateData.driverId = driverId;
+      }
+    }
+
+    // If the car is currently rejected and provider edits it, automatically set statut to pending
+    if (voiture.statut === 'rejected') {
+      updateData.statut = 'pending';
+    }
 
     await voiture.update(updateData);
 
@@ -355,9 +399,24 @@ exports.searchAvailableCars = async (req, res) => {
       attributes: ["voitureId"]
     });
 
+    // Trouver les voitures bloquées manuellement (indisponibilités)
+    const manualBlocks = await Availability.findAll({
+      where: {
+        manuallyEditable: true,
+        startDate: { [Op.lte]: end },
+        endDate: { [Op.gte]: start },
+      },
+      attributes: ["voitureId"],
+    });
+
     const reservedCarIds = reservations.map(r => r.voitureId);
-    if (reservedCarIds.length > 0) {
-      whereConditions.id = { [Op.notIn]: reservedCarIds };
+    const blockedCarIds = manualBlocks.map(a => a.voitureId);
+    const excludedIds = Array.from(new Set([
+      ...reservedCarIds,
+      ...blockedCarIds,
+    ]));
+    if (excludedIds.length > 0) {
+      whereConditions.id = { [Op.notIn]: excludedIds };
     }
 
     // Récupération des voitures avec chauffeur

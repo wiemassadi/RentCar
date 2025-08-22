@@ -35,6 +35,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.FLOAT,
       defaultValue: 0,
     },
+    profilePicture: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   });
 
   Fournisseur.associate = (models) => {

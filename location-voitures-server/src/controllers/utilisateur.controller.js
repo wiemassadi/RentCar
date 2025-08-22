@@ -149,7 +149,7 @@ exports.getMyProfile = async (req, res) => {
 exports.updateMyProfile = async (req, res) => {
   try {
     if (!req.user?.id) return res.status(401).json({ message: "Utilisateur non authentifié" });
-    const { nom, prenom, email, adresse, password } = req.body || {};
+    const { nom, prenom, email, adresse, password, profilePicture } = req.body || {};
     const utilisateur = await Utilisateur.findByPk(req.user.id);
     if (!utilisateur) return res.status(404).json({ message: "Utilisateur non trouvé" });
 
@@ -158,6 +158,7 @@ exports.updateMyProfile = async (req, res) => {
     if (typeof prenom === 'string') updatePayload.prenom = prenom;
     if (typeof email === 'string') updatePayload.email = email;
     if (typeof adresse === 'string') updatePayload.adresse = adresse;
+    if (typeof profilePicture === 'string') updatePayload.profilePicture = profilePicture;
     if (typeof password === 'string' && password.trim().length > 0) {
       updatePayload.password = await bcrypt.hash(password.trim(), 10);
     }
@@ -169,6 +170,7 @@ exports.updateMyProfile = async (req, res) => {
       prenom: utilisateur.prenom,
       email: utilisateur.email,
       adresse: utilisateur.adresse,
+      profilePicture: utilisateur.profilePicture,
       role: "utilisateur",
     });
   } catch (err) {

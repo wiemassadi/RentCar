@@ -10,4 +10,8 @@ router.post("/vehicles", authAdmin, adminController.createVehicle);
 router.put("/vehicles/:id", authAdmin, adminController.updateVehicle);
 router.delete("/vehicles/:id", authAdmin, adminController.deleteVehicle);
 
+// Admin self profile
+router.get("/me/profile", authAdmin, adminController.getMyProfile);
+router.put("/me/profile", authAdmin, adminController.updateMyProfile);
+
 module.exports = router;

@@ -13,7 +13,7 @@ router.get("/:fournisseurId", voitureController.findByFournisseur);
 
 router.put("/:id/validate", voitureController.validate);
 router.put("/:id/reject", voitureController.reject);
-router.put("/:id", voitureController.update);
-router.delete("/:fournisseurId/:voitureId", voitureController.delete);
+router.put("/:id", authFournisseur, voitureController.update);
+router.delete("/:fournisseurId/:voitureId", authFournisseur, voitureController.delete);
 
 module.exports = router;

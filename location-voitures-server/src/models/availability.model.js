@@ -1,10 +1,11 @@
 module.exports = (sequelize, DataTypes) => {
   const Availability = sequelize.define("availability", {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    voitureId: { type: DataTypes.INTEGER, allowNull: false },
     startDate: { type: DataTypes.DATE, allowNull: false },
     endDate: { type: DataTypes.DATE, allowNull: false },
-    startTime: { type: DataTypes.TIME, allowNull: false },
-    endTime: { type: DataTypes.TIME, allowNull: false },
+    startTime: { type: DataTypes.TIME, allowNull: true },
+    endTime: { type: DataTypes.TIME, allowNull: true },
     manuallyEditable: { type: DataTypes.BOOLEAN, defaultValue: true }
   });
 

@@ -8,6 +8,13 @@ router.post("/vehicle-images",
   uploadController.handleVehicleImageUpload
 );
 
+// Upload avatar (utilisateur/admin/fournisseur)
+router.post("/avatars", 
+  (req, res, next) => { req.params.target = 'avatars'; next(); },
+  uploadController.uploadAvatar, 
+  uploadController.handleAvatarUpload
+);
+
 // Supprimer une image
 router.delete("/vehicle-images/:filename", uploadController.deleteVehicleImage);
 

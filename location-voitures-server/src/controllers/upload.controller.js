@@ -2,10 +2,12 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Configuration de multer pour l'upload d'images
+// Configuration de multer pour l'upload d'images (générique)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadPath = 'uploads/vehicles/';
+    // if a target subfolder is specified (e.g., 'avatars'), use it
+    const target = req.params?.target || req.body?.target || 'vehicles'
+    const uploadPath = `uploads/${target}/`;
     // Créer le dossier s'il n'existe pas
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
@@ -15,7 +17,8 @@ const storage = multer.diskStorage({
   filename: function (req, file, cb) {
     // Générer un nom unique pour le fichier
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'vehicle-' + uniqueSuffix + path.extname(file.originalname));
+    const prefix = req.params?.target === 'avatars' || req.body?.target === 'avatars' ? 'avatar-' : 'image-'
+    cb(null, prefix + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
@@ -43,6 +46,9 @@ const upload = multer({
 // Upload multiple images pour un véhicule
 exports.uploadVehicleImages = upload.array('images', 5); // Max 5 images
 
+// Upload single avatar (user/admin/fournisseur)
+exports.uploadAvatar = upload.single('avatar');
+
 // Controller pour gérer l'upload
 exports.handleVehicleImageUpload = async (req, res) => {
   try {
@@ -50,10 +56,9 @@ exports.handleVehicleImageUpload = async (req, res) => {
       return res.status(400).json({ message: 'Aucune image uploadée' });
     }
 
-    // Construire les URLs des images
-    const imageUrls = req.files.map(file => {
-      return `/uploads/vehicles/${file.filename}`;
-    });
+    // Construire les URLs des images selon target
+    const target = req.params?.target || req.body?.target || 'vehicles'
+    const imageUrls = req.files.map(file => `/uploads/${target}/${file.filename}`)
 
     res.status(200).json({
       message: 'Images uploadées avec succès',
@@ -66,6 +71,19 @@ exports.handleVehicleImageUpload = async (req, res) => {
     });
   }
 };
+// Controller pour gérer l'upload d'un avatar
+exports.handleAvatarUpload = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Aucune image uploadée' });
+    }
+    const target = 'avatars'
+    const imageUrl = `/uploads/${target}/${req.file.filename}`
+    res.status(200).json({ message: 'Avatar uploadé avec succès', image: imageUrl })
+  } catch (error) {
+    res.status(500).json({ message: "Erreur lors de l'upload de l'avatar", error: error.message })
+  }
+}
 
 // Supprimer une image
 exports.deleteVehicleImage = async (req, res) => {

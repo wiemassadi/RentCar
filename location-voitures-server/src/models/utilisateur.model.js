@@ -35,7 +35,11 @@ module.exports = (sequelize, DataTypes) => {
     model: "admins",
     key: "id"
   }
-}
+},
+    profilePicture: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    }
 
   });
 

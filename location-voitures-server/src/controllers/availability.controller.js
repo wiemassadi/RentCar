@@ -9,17 +9,35 @@ exports.listCarAvailabilities = async (req, res) => {
     });
     res.status(200).json(availabilities);
   } catch (err) {
-    res.status(500).send(err.message);
+    console.error('listCarAvailabilities error:', err)
+    res.status(500).json({ message: 'Server error listing availabilities', error: err?.message || String(err) });
   }
 };
 
 exports.addAvailability = async (req, res) => {
   try {
-    const { startDate, endDate, startTime, endTime, manuallyEditable } = req.body;
-    const voitureId = req.params.voitureId;
+    const { startDate, endDate, startTime, endTime, manuallyEditable } = req.body || {};
+    const voitureId = parseInt(req.params.voitureId, 10);
+    if (!Number.isFinite(voitureId)) {
+      return res.status(400).json({ message: 'Invalid voitureId' })
+    }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    // Ensure the car exists and is validated
+    const car = await db.voitures.findByPk(voitureId)
+    if (!car) return res.status(404).json({ message: 'Car not found' })
+    if (car.statut !== 'validated') return res.status(400).json({ message: 'Only validated cars can be blocked' })
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "startDate and endDate are required" })
+    }
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD' })
+    }
+    // normalize to day bounds
+    start.setHours(0,0,0,0)
+    end.setHours(23,59,59,999)
 
     if (end < start) {
       return res.status(400).json({ message: "End date must be after start date." });
@@ -81,14 +99,15 @@ exports.addAvailability = async (req, res) => {
       voitureId,
       startDate: start,
       endDate: end,
-      startTime,
-      endTime,
+      startTime: startTime || null,
+      endTime: endTime || null,
       manuallyEditable: manuallyEditable !== undefined ? manuallyEditable : true
     });
 
     res.status(201).json(availability);
   } catch (err) {
-    res.status(500).send(err.message);
+    console.error('addAvailability error:', err)
+    res.status(500).json({ message: 'Server error creating availability', error: err?.message || String(err) });
   }
 };
 
@@ -111,7 +130,8 @@ exports.updateAvailability = async (req, res) => {
 
     res.status(200).json(availability);
   } catch (err) {
-    res.status(500).send(err.message);
+    console.error('updateAvailability error:', err)
+    res.status(500).json({ message: 'Server error updating availability', error: err?.message || String(err) });
   }
 };
 
@@ -123,6 +143,7 @@ exports.deleteAvailability = async (req, res) => {
     await availability.destroy();
     res.status(200).json({ message: "Availability successfully deleted." });
   } catch (err) {
-    res.status(500).send(err.message);
+    console.error('deleteAvailability error:', err)
+    res.status(500).json({ message: 'Server error deleting availability', error: err?.message || String(err) });
   }
 };

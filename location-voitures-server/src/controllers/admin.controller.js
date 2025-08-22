@@ -3,6 +3,8 @@ const Voiture = db.voitures;
 const Fournisseur = db.fournisseurs;
 const Categorie = db.categories;
 const Agence = db.agence;
+const Admin = db.admins;
+const bcrypt = require('bcrypt');
 
 // Créer un véhicule en tant qu'admin
 exports.createVehicle = async (req, res) => {
@@ -255,3 +257,33 @@ exports.getVehicleStats = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Admin self profile
+exports.getMyProfile = async (req, res) => {
+  try {
+    if (!req.admin?.id) return res.status(401).json({ message: 'Admin non authentifié' })
+    const admin = await Admin.findByPk(req.admin.id)
+    if (!admin) return res.status(404).json({ message: 'Admin non trouvé' })
+    res.json(admin)
+  } catch (e) { res.status(500).send(e.message) }
+}
+
+exports.updateMyProfile = async (req, res) => {
+  try {
+    if (!req.admin?.id) return res.status(401).json({ message: 'Admin non authentifié' })
+    const { userName, email, gender, dateOfBirth, password, profilePicture } = req.body || {}
+    const admin = await Admin.findByPk(req.admin.id)
+    if (!admin) return res.status(404).json({ message: 'Admin non trouvé' })
+    const payload = {}
+    if (typeof userName === 'string') payload.userName = userName
+    if (typeof email === 'string') payload.email = email
+    if (typeof gender === 'string') payload.gender = gender
+    if (typeof dateOfBirth === 'string') payload.dateOfBirth = dateOfBirth
+    if (typeof profilePicture === 'string') payload.profilePicture = profilePicture
+    if (typeof password === 'string' && password.trim()) {
+      payload.password = await bcrypt.hash(password.trim(), 10)
+    }
+    await admin.update(payload)
+    res.json(admin)
+  } catch (e) { res.status(500).send(e.message) }
+}
